@@ -4,10 +4,15 @@ from model import fetch_stock_data, prepare_data, train_model, predict_future
 
 app = FastAPI()
 
-# Allow frontend (e.g., localhost:3000) to access the API
+origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -24,5 +29,19 @@ def predict_stock(symbol: str = Query(...), days: int = Query(7)):
             "last_date": dates.iloc[-1].strftime("%Y-%m-%d"),
             "predictions": prediction
         }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/history")
+def get_history(symbol: str = Query(...), period: str = "6mo"):
+    try:
+        df = fetch_stock_data(symbol, period)
+        return [
+            {
+                "date": row["Date"].strftime("%Y-%m-%d"),
+                "close": round(row["Close"], 2)
+            }
+            for _, row in df.iterrows()
+        ]
     except Exception as e:
         return {"error": str(e)}
